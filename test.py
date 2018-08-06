@@ -13,8 +13,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parameter setting
 data_path = './data/bot_dataset_test.csv'
-run_dir = './runs/1533518761_blstm'
-checkpoint = 'clf-18000'
+run_dir = './runs/1533538249_lstm'
+checkpoint = 'clf-2500'
 
 # File paths
 tf.flags.DEFINE_string('test_data_file', data_path, 'Test data file path')
