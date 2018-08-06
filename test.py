@@ -11,10 +11,15 @@ import data_helper
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+# Parameter setting
+data_path = './data/bot_dataset_test_1808031014.csv'
+run_dir = './runs/1533266403_blstm'
+checkpoint = 'clf-18000'
+
 # File paths
-tf.flags.DEFINE_string('test_data_file', None, 'Test data file path')
-tf.flags.DEFINE_string('run_dir', None, 'Restore the model from this run')
-tf.flags.DEFINE_string('checkpoint', None, 'Restore the graph from this checkpoint')
+tf.flags.DEFINE_string('test_data_file', data_path, 'Test data file path')
+tf.flags.DEFINE_string('run_dir', run_dir, 'Restore the model from this run')
+tf.flags.DEFINE_string('checkpoint', checkpoint, 'Restore the graph from this checkpoint')
 
 # Test batch size
 tf.flags.DEFINE_integer('batch_size', 64, 'Test batch size')

@@ -6,6 +6,7 @@ import csv
 import time
 import json
 import collections
+from _hangul import normalize
 
 import numpy as np
 from tensorflow.contrib import learn
@@ -46,8 +47,10 @@ def load_data(file_path, sw_path=None, min_frequency=0, max_length=0, language='
                 sent = _tradition_2_simple(sent)  # Convert traditional Chinese to simplified Chinese
             elif language == 'en':
                 sent = sent.lower()
+            elif language == 'ko':
+                sent = sent
             else:
-                raise ValueError('language should be one of [ch, en].')
+                raise ValueError('language should be one of [ch, en, ko].')
 
             sent = _clean_data(sent, sw, language=language)  # Remove stop words and special characters
 
@@ -177,6 +180,8 @@ def _clean_data(sent, sw, language='ch'):
         sent = re.sub(r"\)", " \) ", sent)
         sent = re.sub(r"\?", " \? ", sent)
         sent = re.sub(r"\s{2,}", " ", sent)
+    if language == 'ko':
+        sent = normalize(sent, english=True, number=True, punctuation=False)
     if sw is not None:
         sent = "".join([word for word in sent if word not in sw])
 

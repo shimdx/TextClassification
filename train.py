@@ -14,6 +14,8 @@ from rnn_classifier import rnn_clf
 from cnn_classifier import cnn_clf
 from clstm_classifier import clstm_clf
 
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+
 try:
     from sklearn.model_selection import train_test_split
 except ImportError as e:
@@ -26,16 +28,20 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parameters
 # =============================================================================
+# Data_parameters setting
+data_path = './data/bot_dataset_train_1808031014.csv'
+data_language = 'ko'
+num_classes = 4
 
 # Model choices
 tf.flags.DEFINE_string('clf', 'cnn', "Type of classifiers. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
 
 # Data parameters
-tf.flags.DEFINE_string('data_file', None, 'Data file path')
+tf.flags.DEFINE_string('data_file', data_path, 'Data file path')
 tf.flags.DEFINE_string('stop_word_file', None, 'Stop word file path')
-tf.flags.DEFINE_string('language', 'en', "Language of the data file. You have two choices: [ch, en]")
+tf.flags.DEFINE_string('language', data_language, "Language of the data file. You have two choices: [ch, en]")
 tf.flags.DEFINE_integer('min_frequency', 0, 'Minimal word frequency')
-tf.flags.DEFINE_integer('num_classes', 2, 'Number of classes')
+tf.flags.DEFINE_integer('num_classes', num_classes, 'Number of classes')
 tf.flags.DEFINE_integer('max_length', 0, 'Max document length')
 tf.flags.DEFINE_integer('vocab_size', 0, 'Vocabulary size')
 tf.flags.DEFINE_float('test_size', 0.1, 'Cross validation test size')
@@ -68,7 +74,7 @@ elif FLAGS.clf == 'clstm':
 
 # Output files directory
 timestamp = str(int(time.time()))
-outdir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
+outdir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp+"_"+FLAGS.clf))
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
