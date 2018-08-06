@@ -29,7 +29,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # Parameters
 # =============================================================================
 # Data_parameters setting
-data_path = './data/bot_dataset_train_1808031014.csv'
+data_path = './data/bot_dataset_train.csv'
 data_language = 'ko'
 num_classes = 4
 

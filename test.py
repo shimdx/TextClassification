@@ -12,8 +12,8 @@ import data_helper
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parameter setting
-data_path = './data/bot_dataset_test_1808031014.csv'
-run_dir = './runs/1533266403_blstm'
+data_path = './data/bot_dataset_test.csv'
+run_dir = './runs/1533518761_blstm'
 checkpoint = 'clf-18000'
 
 # File paths
