@@ -62,7 +62,7 @@ tf.flags.DEFINE_integer('num_epochs', 50, 'Number of epochs')
 tf.flags.DEFINE_float('decay_rate', 1, 'Learning rate decay rate. Range: (0, 1]')  # Learning rate decay
 tf.flags.DEFINE_integer('decay_steps', 100000, 'Learning rate decay steps')  # Learning rate decay
 tf.flags.DEFINE_integer('evaluate_every_steps', 100, 'Evaluate the model on validation set after this many steps')
-tf.flags.DEFINE_integer('save_every_steps', 1000, 'Save the model after this many steps')
+tf.flags.DEFINE_integer('save_every_steps', 500, 'Save the model after this many steps')
 tf.flags.DEFINE_integer('num_checkpoint', 10, 'Number of models to store')
 
 FLAGS = tf.app.flags.FLAGS
