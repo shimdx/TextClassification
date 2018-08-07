@@ -12,9 +12,9 @@ import data_helper
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parameter setting
-data_path = './data/bot_dataset_test_1808031014.csv'
-run_dir = './runs/1533266403_blstm'
-checkpoint = 'clf-18000'
+data_path = './data/bot_dataset_test.csv'
+run_dir = './runs/1533602592_clstm_w2v'
+checkpoint = 'clf-2500'
 
 # File paths
 tf.flags.DEFINE_string('test_data_file', data_path, 'Test data file path')
@@ -23,6 +23,14 @@ tf.flags.DEFINE_string('checkpoint', checkpoint, 'Restore the graph from this ch
 
 # Test batch size
 tf.flags.DEFINE_integer('batch_size', 64, 'Test batch size')
+
+#w2v model parameters
+tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
+tf.flags.DEFINE_integer('max_length', 28, 'Max document length')
+tf.flags.DEFINE_integer('embedding_size', 200, 'Word embedding size. For CNN, C-LSTM.')
+
+#post tagging parameters
+tf.flags.DEFINE_bool('is_post_tagged', False, 'Apply post_tagged words mode')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -40,7 +48,7 @@ data, labels, lengths, _ = data_helper.load_data(file_path=FLAGS.test_data_file,
                                                  max_length=params['max_length'],
                                                  language=params['language'],
                                                  vocab_processor=vocab_processor,
-                                                 shuffle=False)
+                                                 shuffle=False, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged)
 
 # Restore graph
 graph = tf.Graph()
@@ -68,7 +76,18 @@ with graph.as_default():
     # Test
     for batch in batches:
         x_test, y_test, x_lengths = batch
-        if params['clf'] == 'cnn':
+
+        if FLAGS.is_w2v:
+            input_conv = np.zeros((len(x_test), FLAGS.max_length, FLAGS.embedding_size), dtype=np.float32)
+            for idx, item in enumerate(x_test):
+                if len(item) < FLAGS.max_length:
+                    for i, word in enumerate(item):
+                        input_conv[idx][i] = word
+                else:
+                    input_conv[idx] = item[:FLAGS.max_length]
+            x_test = input_conv
+
+        if 'cnn' in params['clf']:
             feed_dict = {input_x: x_test, input_y: y_test, keep_prob: 1.0}
             batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
         else:
