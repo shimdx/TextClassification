@@ -37,7 +37,7 @@ data_language = 'ko'
 num_classes = 4
 
 # Model choices
-tf.flags.DEFINE_string('clf', 'cnn', "Type of classifiers. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
+tf.flags.DEFINE_string('clf', 'clstm', "Type of classifiers. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
 
 # Data parameters
 tf.flags.DEFINE_string('data_file', data_path, 'Data file path')

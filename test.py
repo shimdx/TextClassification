@@ -13,7 +13,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Parameter setting
 data_path = './data/bot_dataset_test.csv'
-run_dir = './runs/1533602592_clstm_w2v'
+run_dir = './runs/1533538249_lstm'
 checkpoint = 'clf-2500'
 
 # File paths

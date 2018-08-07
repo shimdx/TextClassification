@@ -13,7 +13,7 @@ with open('data/bot_dataset_test.txt', 'w', encoding='utf-8') as f_test:
         random.shuffle(data)
         testcnt = {"life":0,"svc":0,"shp":0,"tour":0}
         for line in data:
-            if testcnt[line[1]] < 300:
+            if testcnt[line[1]] < 200:
                 f_test.write("('" + line[0].replace(","," ").replace("'","")  + "', '" + line[1] + "')\n")
                 testcnt[line[1]] += 1
                 print(line[1],testcnt[line[1]])
@@ -29,7 +29,7 @@ with open('data/bot_dataset_test.csv', 'w', encoding='utf-8') as f_test:
         f_train.write("label,content\n")
         testcnt = {"life":0,"svc":0,"shp":0,"tour":0}
         for line in data:
-            if testcnt[line[1]] < 300:
+            if testcnt[line[1]] < 200:
                 f_test.write(str(label[line[1]])+","+line[0].replace(","," ")+"\n")
                 testcnt[line[1]] += 1
                 print(line[1],testcnt[line[1]])
