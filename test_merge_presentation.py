@@ -17,7 +17,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 # Parameter setting
 data_path = './data/bot_dataset_all_new_test.csv'
 run_mdl1_dir = './runs/1533709245_clstm_w2v'
-run_mdl2_dir = './runs/1533859061_cnn_w2v'
+run_mdl2_dir = './runs/1533602592_clstm_w2v'
 checkpoint_md1 = 'clf-5500'
 checkpoint_md2 = 'clf-2500'
 
@@ -195,3 +195,4 @@ print('Test accuracy: {}'.format(final_accuracy_md2))
 #     for i in range(len(all_predictions)):
 #         csvwriter.writerow([labels[i], all_predictions[i]])
 #     print('Predictions saved to {}'.format(os.path.join(FLAGS.run_dir, 'predictions.csv')))
+

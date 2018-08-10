@@ -27,17 +27,17 @@ except ImportError as e:
 
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = "3"
+os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
 # Parameters
 # =============================================================================
 # Data_parameters setting
-data_path = './data/bot_dataset_train.csv'
+data_path = './data/bot_dataset_all_new_train.csv'
 data_language = 'ko'
 num_classes = 4
 
 # Model choices
-tf.flags.DEFINE_string('clf', 'clstm', "Type of classifiers. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
+tf.flags.DEFINE_string('clf', 'clstm', "Type of classifierz s. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
 
 # Data parameters
 tf.flags.DEFINE_string('data_file', data_path, 'Data file path')
@@ -72,6 +72,7 @@ tf.flags.DEFINE_integer('num_checkpoint', 10, 'Number of models to store')
 tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
 #post tagging parameters
 tf.flags.DEFINE_bool('is_post_tagged', False, 'Apply post_tagged words mode')
+tf.flags.DEFINE_bool('is_noun', False, 'Allow noun only for training words')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -95,7 +96,7 @@ data, labels, lengths, vocab_processor = data_helper.load_data(file_path=FLAGS.d
                                                                min_frequency=FLAGS.min_frequency,
                                                                max_length=FLAGS.max_length,
                                                                language=FLAGS.language,
-                                                               shuffle=True, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged)
+                                                               shuffle=True, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged, is_noun = FLAGS.is_noun)
 # Save vocabulary processor
 vocab_processor.save(os.path.join(outdir, 'vocab'))
 
@@ -105,7 +106,11 @@ FLAGS.max_length = vocab_processor.max_document_length
 
 params = FLAGS.flag_values_dict()
 
-
+labels = [label - 1 for label in labels]
+target = [idx for idx, label in enumerate(labels) if label > -1]
+data = [data[idx] for idx in target]
+labels = [labels[idx] for idx in target]
+lengths = [lengths[idx] for idx in target]
 
 # pretrained w2v model 미 적용시, 연관 parameter 삭제 / embedding dim size는 pretrained의 크기 대로 (200)
 if not params['is_w2v']:
