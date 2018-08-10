@@ -27,7 +27,7 @@ except ImportError as e:
 
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # Parameters
 # =============================================================================
@@ -37,7 +37,7 @@ data_language = 'ko'
 num_classes = 4
 
 # Model choices
-tf.flags.DEFINE_string('clf', 'clstm', "Type of classifierz s. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
+tf.flags.DEFINE_string('clf', 'cnn_w2v', "Type of classifierz s. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
 
 # Data parameters
 tf.flags.DEFINE_string('data_file', data_path, 'Data file path')
@@ -69,9 +69,9 @@ tf.flags.DEFINE_integer('save_every_steps', 500, 'Save the model after this many
 tf.flags.DEFINE_integer('num_checkpoint', 10, 'Number of models to store')
 
 #w2v model parameters
-tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
+tf.flags.DEFINE_bool('is_w2v', True, 'Apply pre-trained word2vector mode')
 #post tagging parameters
-tf.flags.DEFINE_bool('is_post_tagged', False, 'Apply post_tagged words mode')
+tf.flags.DEFINE_bool('is_post_tagged', True, 'Apply post_tagged words mode')
 tf.flags.DEFINE_bool('is_noun', False, 'Allow noun only for training words')
 
 FLAGS = tf.app.flags.FLAGS
@@ -276,3 +276,4 @@ with tf.Graph().as_default():
                 save_path = saver.save(sess, os.path.join(outdir, 'model/clf'), current_step)
 
         print('\nAll the files have been saved to {}\n'.format(outdir))
+

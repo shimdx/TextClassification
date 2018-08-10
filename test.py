@@ -13,7 +13,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 # Parameter setting
 data_path = './data/bot_dataset_all_new_test.csv'
-run_dir = './runs/1533859101_clstm_w2v'
+run_dir = './runs/1533865660_clstm_w2v'
 checkpoint = 'clf-2500'
 
 # File paths
@@ -25,13 +25,13 @@ tf.flags.DEFINE_string('checkpoint', checkpoint, 'Restore the graph from this ch
 tf.flags.DEFINE_integer('batch_size', 20, 'Test batch size')
 
 #w2v model parameters
-tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
+tf.flags.DEFINE_bool('is_w2v', True, 'Apply pre-trained word2vector mode')
 tf.flags.DEFINE_integer('max_length', 28, 'Max document length')
 tf.flags.DEFINE_integer('embedding_size', 200, 'Word embedding size. For CNN, C-LSTM.')
 
 #post tagging parameters
-tf.flags.DEFINE_bool('is_post_tagged', False, 'Apply post_tagged words mode')
-tf.flags.DEFINE_bool('is_noun', False, 'Allow noun only for training words')
+tf.flags.DEFINE_bool('is_post_tagged', True, 'Apply post_tagged words mode')
+tf.flags.DEFINE_bool('is_noun', True, 'Allow noun only for training words')
 
 FLAGS = tf.app.flags.FLAGS
 

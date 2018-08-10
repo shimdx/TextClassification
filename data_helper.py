@@ -110,10 +110,86 @@ def load_data(file_path, sw_path=None, min_frequency=0, max_length=0, language='
     print('Dataset has been built successfully.')
     print('Run time: {}'.format(end - start))
     print('Number of sentences: {}'.format(len(data)))
-    print('Vocabulary size: {}'.format(len(vocab_processor.vocabulary_._mapping) if not is_w2v else w2v_model.vocabulary.__sizeof__())) # word 2vector에 맞춰 변경
+    print('Vocabulary size: {}'.format(len(vocab_processor.vocabulary.mapping) if not is_w2v else w2v_model.vocabulary.__sizeof__())) # word 2vector에 맞춰 변경
     print('Max document length: {}\n'.format(vocab_processor.max_document_length)) # 추가 변경 해줘야 될 부분
-    
+
     return data, labels, lengths, vocab_processor
+
+
+def load_text(text, sw_path=None, min_frequency=0, max_length=0, language='ch', vocab_processor=None, shuffle=True,
+              is_w2v=False, is_post_tagged=False, is_noun=False):
+    """
+    Build dataset for mini-batch iterator
+    :param file_path: Data file path
+    :param sw_path: Stop word file path
+    :param language: 'ch' for Chinese and 'en' for English
+    :param min_frequency: the minimal frequency of words to keep
+    :param max_length: the max document length
+    :param vocab_processor: the predefined vocabulary processor
+    :param shuffle: whether to shuffle the data
+    :return data, labels, lengths, vocabulary processor
+    """
+
+    print('Building text dataset ...')
+    start = time.time()
+    sentences = []
+
+    if sw_path is not None:
+        sw = _stop_words(sw_path)
+    else:
+        sw = None
+
+    sent = text.strip()
+
+    if language == 'ch':
+        sent = _tradition_2_simple(sent)  # Convert traditional Chinese to simplified Chinese
+    elif language == 'en':
+        sent = sent.lower()
+    elif language == 'ko':
+        sent = sent
+    else:
+        raise ValueError('language should be one of [ch, en, ko].')
+
+    sent = _clean_data(sent, sw, language=language)  # Remove stop words and special characters
+
+    if language == 'ch':
+        sent = _word_segmentation(sent)
+    sentences.append(sent)
+    print("sentences",sentences)
+
+    # Real lengths
+    lengths = np.array(list(map(len, [sent.strip().split(' ') for sent in sentences])))
+
+    if max_length == 0:
+        max_length = max(lengths)
+
+    # Extract vocabulary from sentences and map words to indices
+    if vocab_processor is None:
+        vocab_processor = learn.preprocessing.VocabularyProcessor(max_length, min_frequency=min_frequency)
+        data = np.array(list(vocab_processor.fit_transform(sentences)))
+    else:
+        data = np.array(list(vocab_processor.transform(sentences)))
+    print("data.shape",data.shape)
+    # Change data as word2vector form
+    if is_post_tagged:
+        sentences = [" ".join(sentence) for sentence in _keyword_list_extractor(sentences, is_noun)]
+    # print('post-tagging: (%r), example : %s' % (is_post_tagged, sentences[0]))
+    if is_w2v:
+        print("sentences after pos tagging", sentences)
+        w2v_model = gensim.models.Word2Vec.load(datapath("/home/alice/yeongmin/dataset/ko.bin"))
+        data = _vectorize_sentence_list(w2v_model=w2v_model, docs=sentences)
+    end = time.time()
+    print("len(data)",len(data))
+    print("data",data)
+
+    print('Dataset has been built successfully.')
+    print('Run time: {}'.format(end - start))
+    print('Number of sentences: {}'.format(len(data)))
+    print('Vocabulary size: {}'.format(len(
+        vocab_processor.vocabulary.mapping) if not is_w2v else w2v_model.vocabulary.__sizeof__()))  # word 2vector에 맞춰 변경
+    print('Max document length: {}\n'.format(vocab_processor.max_document_length))  # 추가 변경 해줘야 될 부분
+
+    return data, lengths
 
 
 def batch_iter(data, labels, lengths, batch_size, num_epochs):
@@ -240,8 +316,9 @@ def _keyword_list_extractor (dataset, is_noun):
     criteria = int(len(dataset)/10)
     percent = 0
     for idx, item in enumerate(dataset) :
-        if idx % criteria == 0 :
-            print("%d%% of sentence's has been post-tagged" % percent)
-            percent += 10
+        if criteria > 0:
+            if idx % criteria == 0 :
+                print("%d%% of sentence's has been post-tagged" % percent)
+                percent += 10
         keword_list.append(_keyword_extractor(item, is_noun)) # konlpy로 분석해서 형태소별로 중요한 단어만 남기기
     return keword_list

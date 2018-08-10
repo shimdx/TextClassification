@@ -68,7 +68,7 @@ class cnn_clf_w2v(object):
             self.l2_loss += tf.nn.l2_loss(softmax_b)
 
             self.logits = tf.matmul(h_drop, softmax_w) + softmax_b
-            predictions = tf.nn.softmax(self.logits)
+            predictions = tf.nn.softmax(self.logits, name='logits')
             self.predictions = tf.argmax(predictions, 1, name='predictions')
 
         # Loss

@@ -13,12 +13,12 @@ import data_helper
 
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 # Parameter setting
 data_path = './data/bot_dataset_all_new_test.csv'
-run_mdl1_dir = './runs/1533709245_clstm_w2v'
-run_mdl2_dir = './runs/1533859061_cnn_w2v'
-checkpoint_md1 = 'clf-5500'
+run_mdl1_dir = './runs/1533872236_clstm_w2v'
+run_mdl2_dir = './runs/1533875054_cnn_w2v'
+checkpoint_md1 = 'clf-3000'
 checkpoint_md2 = 'clf-2500'
 
 # File paths
@@ -30,7 +30,7 @@ tf.flags.DEFINE_string('checkpoint', checkpoint_md1, 'Restore the graph from thi
 tf.flags.DEFINE_integer('batch_size', 20, 'Test batch size')
 
 #w2v model parameters
-tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
+tf.flags.DEFINE_bool('is_w2v', True, 'Apply pre-trained word2vector mode')
 tf.flags.DEFINE_integer('max_length', 28, 'Max document length')
 tf.flags.DEFINE_integer('embedding_size', 200, 'Word embedding size. For CNN, C-LSTM.')
 
@@ -54,7 +54,10 @@ data, labels, lengths, _ = data_helper.load_data(file_path=FLAGS.data_file,
                                                  max_length=params['max_length'],
                                                  language=params['language'],
                                                  vocab_processor=vocab_processor,
-                                                 shuffle=False, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged, is_noun = FLAGS.is_noun)
+                                                 shuffle=False,
+                                                 is_w2v=FLAGS.is_w2v,
+                                                 is_post_tagged=FLAGS.is_post_tagged,
+                                                 is_noun = FLAGS.is_noun)
 labels_md1 = [1 if label > 1 else label for label in labels]
 
 # Restore graph
@@ -70,7 +73,8 @@ with graph.as_default():
     input_x = graph.get_tensor_by_name('input_x:0')
     input_y = graph.get_tensor_by_name('input_y:0')
     keep_prob = graph.get_tensor_by_name('keep_prob:0')
-    predictions = graph.get_tensor_by_name('softmax/predictions:0')
+    predictions_md1 = graph.get_tensor_by_name('softmax/predictions:0')
+    logits_md1 = graph.get_tensor_by_name('softmax/logits:0')
     accuracy = graph.get_tensor_by_name('accuracy/accuracy:0')
 
     # Generate batches
@@ -94,15 +98,15 @@ with graph.as_default():
                     input_conv[idx] = item[:FLAGS.max_length]
             x_test = input_conv
 
-        if 'cnn' in params['clf']:
+        if 'cnn' in run_mdl1_dir:
             feed_dict = {input_x: x_test, input_y: y_test, keep_prob: 1.0}
-            batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
+            batch_predictions, batch_accuracy, _ = sess.run([predictions_md1, accuracy, logits_md1], feed_dict)
         else:
             batch_size = graph.get_tensor_by_name('batch_size:0')
             sequence_length = graph.get_tensor_by_name('sequence_length:0')
             feed_dict = {input_x: x_test, input_y: y_test, batch_size: FLAGS.batch_size, sequence_length: x_lengths, keep_prob: 1.0}
 
-            batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
+            batch_predictions, batch_accuracy, _ = sess.run([predictions_md1, accuracy, logits_md1], feed_dict)
 
         sum_accuracy += batch_accuracy
         all_predictions = np.concatenate([all_predictions, batch_predictions])
@@ -142,6 +146,7 @@ with graph_md2.as_default():
     input_y_md2 = graph_md2.get_tensor_by_name('input_y:0')
     keep_prob_md2 = graph_md2.get_tensor_by_name('keep_prob:0')
     predictions_md2 = graph_md2.get_tensor_by_name('softmax/predictions:0')
+    logits_md2 = graph_md2.get_tensor_by_name('softmax/logits:0')
     accuracy_md2 = graph_md2.get_tensor_by_name('accuracy/accuracy:0')
 
     # Generate batches
@@ -165,15 +170,15 @@ with graph_md2.as_default():
                     input_conv_md2[idx] = item[:FLAGS.max_length]
             x_test_md2 = input_conv_md2
 
-        if 'cnn' in params['clf']:
+        if 'cnn' in run_mdl2_dir:
             feed_dict_md2 = {input_x_md2: x_test_md2, input_y_md2: y_test_md2, keep_prob_md2: 1.0}
-            batch_predictions_md2, batch_accuracy_md2 = sess_md2.run([predictions_md2, accuracy_md2], feed_dict_md2)
+            batch_predictions_md2, batch_accuracy_md2, _ = sess_md2.run([predictions_md2, accuracy_md2, logits_md2], feed_dict_md2)
         else:
             batch_size_md2 = graph_md2.get_tensor_by_name('batch_size:0')
             sequence_length_md2 = graph_md2.get_tensor_by_name('sequence_length:0')
             feed_dict_md2 = {input_x_md2: x_test_md2, input_y_md2: y_test_md2, batch_size_md2: min(FLAGS.batch_size, len(y_test_md2)), sequence_length_md2: x_lengths_md2, keep_prob_md2: 1.0}
 
-            batch_predictions_md2, batch_accuracy_md2 = sess_md2.run([predictions_md2, accuracy_md2], feed_dict_md2)
+            batch_predictions_md2, batch_accuracy_md2, _ = sess_md2.run([predictions_md2, accuracy_md2, logits_md2], feed_dict_md2)
 
         sum_accuracy_md2 += batch_accuracy_md2
         all_predictions_md2 = np.concatenate([all_predictions_md2, batch_predictions_md2])
@@ -188,10 +193,89 @@ print(cm_md2)
 print('Test accuracy: {}'.format(final_accuracy_md2))
 
 
-# # Save all predictions
-# with open(os.path.join(FLAGS.run_dir, 'predictions.csv'), 'w', encoding='utf-8', newline='') as f:
-#     csvwriter = csv.writer(f)
-#     csvwriter.writerow(['True class', 'Prediction'])
-#     for i in range(len(all_predictions)):
-#         csvwriter.writerow([labels[i], all_predictions[i]])
-#     print('Predictions saved to {}'.format(os.path.join(FLAGS.run_dir, 'predictions.csv')))
+#Sample Test
+def sample_test(text=""):
+    chat_x_input, chat_x_len = data_helper.load_text(text=text,
+                                           sw_path=params['stop_word_file'],
+                                           min_frequency=params['min_frequency'],
+                                           max_length=params['max_length'],
+                                           language=params['language'],
+                                           vocab_processor=vocab_processor,
+                                           shuffle=False, is_w2v=FLAGS.is_w2v,
+                                           is_post_tagged=FLAGS.is_post_tagged, is_noun=FLAGS.is_noun)
+    print(chat_x_input, chat_x_len)
+
+    if FLAGS.is_w2v:
+        chat_input_conv = np.zeros((len(chat_x_input), FLAGS.max_length, FLAGS.embedding_size), dtype=np.float32)
+        for idx, item in enumerate(chat_x_input):
+            if len(item) < FLAGS.max_length:
+                for i, word in enumerate(item):
+                    chat_input_conv[idx][i] = word
+            else:
+                chat_input_conv[idx] = item[:FLAGS.max_length]
+        chat_x_input = chat_input_conv
+
+    if 'cnn' in run_mdl1_dir:
+        chat_feed_dict = {input_x: chat_x_input, keep_prob: 1.0}
+        chat_prediction_md1, chat_logits_md1 = sess.run([predictions_md1, logits_md1], chat_feed_dict)
+    else:
+        chat_feed_dict = {input_x: chat_x_input, batch_size: 1, sequence_length: chat_x_len,
+                     keep_prob: 1.0}
+
+        chat_prediction_md1, chat_logits_md1 = sess.run([predictions_md1, logits_md1], chat_feed_dict)
+
+    if 'cnn' in run_mdl2_dir:
+        chat_feed_dict_md2 = {input_x_md2: chat_x_input, keep_prob_md2: 1.0}
+        chat_prediction_md2, chat_logits_md2 = sess_md2.run([predictions_md2, logits_md2], chat_feed_dict_md2)
+    else:
+        chat_feed_dict_md2 = {input_x_md2: chat_x_input,
+                         batch_size_md2: 1, sequence_length_md2: chat_x_len,
+                         keep_prob_md2: 1.0}
+
+        chat_prediction_md2, chat_logits_md2 = sess_md2.run([predictions_md2, logits_md2], chat_feed_dict_md2)
+
+    idx2res = {"life":0,"svc":1,"shp":2,"tour":3}
+
+    # print("model1", chat_prediction_md1, chat_logits_md1)
+    # print("model2", chat_prediction_md2, chat_logits_md2)
+    return chat_prediction_md1, chat_prediction_md2, chat_logits_md2
+
+def get_bot_name(bot_id):
+    if bot_id == "svc":
+        return "전자서비스"
+    elif bot_id == "life":
+        return "보험"
+    elif bot_id == "tour":
+        return "여행"
+    else :
+        return "쇼핑"
+
+#Chatbot
+while True:
+    user_input_text = input("질문을 입력하세요")
+    user_input_text.replace("질문을 입력하세요","")
+    if user_input_text == "quit":
+        print("종료합니다.")
+        break
+    result_md1, result_md2, softmax_vec,  = sample_test(text=user_input_text)
+    sv_list = softmax_vec[0]
+    _max = max(sv_list)
+    _argmax = np.argmax(sv_list)
+
+    if result_md1==0:
+        print("학습되지 않은 분야의 질문입니다. 보험/전자서비스/여행/쇼핑 관련 질문을 해 주세요")
+    if _max > 0.97:
+        idx2res = {0:"life", 1:"svc", 2:"shp", 3:"tour"}
+        print(get_bot_name(idx2res[result_md2]) + "봇에 연결합니다.")
+    else:
+        # softmax_vec.sort(reverse =True)
+
+        second_max = 0
+        second_max_idx = -1
+        for i, v in enumerate(sv_list):
+            if i != _argmax:
+                if v > second_max:
+                    second_max = v
+                    second_max_idx = i
+
+        print(get_bot_name(idx2res[result_md2]) + "/" + get_bot_name(idx2res[second_max_idx]) + "봇 중에 선택해주세요")
