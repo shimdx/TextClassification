@@ -13,7 +13,7 @@ import data_helper
 
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 # Parameter setting
 data_path = './data/bot_dataset_all_new_test.csv'
 run_mdl1_dir = './runs/1533872236_clstm_w2v'
@@ -203,7 +203,7 @@ def sample_test(text=""):
                                            vocab_processor=vocab_processor,
                                            shuffle=False, is_w2v=FLAGS.is_w2v,
                                            is_post_tagged=FLAGS.is_post_tagged, is_noun=FLAGS.is_noun)
-    print(chat_x_input, chat_x_len)
+    # print(chat_x_input, chat_x_len)
 
     if FLAGS.is_w2v:
         chat_input_conv = np.zeros((len(chat_x_input), FLAGS.max_length, FLAGS.embedding_size), dtype=np.float32)
@@ -252,8 +252,8 @@ def get_bot_name(bot_id):
 
 #Chatbot
 while True:
-    user_input_text = input("질문을 입력하세요")
-    user_input_text.replace("질문을 입력하세요","")
+    user_input_text = input("질문: ")
+    user_input_text.replace("질문: ","")
     if user_input_text == "quit":
         print("종료합니다.")
         break
@@ -263,10 +263,11 @@ while True:
     _argmax = np.argmax(sv_list)
 
     if result_md1==0:
-        print("학습되지 않은 분야의 질문입니다. 보험/전자서비스/여행/쇼핑 관련 질문을 해 주세요")
+        print("답변: 학습되지 않은 분야의 질문입니다. 보험/전자서비스/여행/쇼핑 관련 질문을 해 주세요")
+        continue
     if _max > 0.97:
         idx2res = {0:"life", 1:"svc", 2:"shp", 3:"tour"}
-        print(get_bot_name(idx2res[result_md2]) + "봇에 연결합니다.")
+        print(get_bot_name(idx2res[result_md2[0]]) + "봇에 연결합니다.")
     else:
         # softmax_vec.sort(reverse =True)
 
@@ -278,4 +279,4 @@ while True:
                     second_max = v
                     second_max_idx = i
 
-        print(get_bot_name(idx2res[result_md2]) + "/" + get_bot_name(idx2res[second_max_idx]) + "봇 중에 선택해주세요")
+        print(get_bot_name(idx2res[result_md2[0]]) + "/" + get_bot_name(idx2res[second_max_idx]) + "봇 중에 선택해주세요")

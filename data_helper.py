@@ -130,7 +130,7 @@ def load_text(text, sw_path=None, min_frequency=0, max_length=0, language='ch', 
     :return data, labels, lengths, vocabulary processor
     """
 
-    print('Building text dataset ...')
+    # print('Building text dataset ...')
     start = time.time()
     sentences = []
 
@@ -155,7 +155,7 @@ def load_text(text, sw_path=None, min_frequency=0, max_length=0, language='ch', 
     if language == 'ch':
         sent = _word_segmentation(sent)
     sentences.append(sent)
-    print("sentences",sentences)
+    # print("sentences",sentences)
 
     # Real lengths
     lengths = np.array(list(map(len, [sent.strip().split(' ') for sent in sentences])))
@@ -169,25 +169,25 @@ def load_text(text, sw_path=None, min_frequency=0, max_length=0, language='ch', 
         data = np.array(list(vocab_processor.fit_transform(sentences)))
     else:
         data = np.array(list(vocab_processor.transform(sentences)))
-    print("data.shape",data.shape)
+    # print("data.shape",data.shape)
     # Change data as word2vector form
     if is_post_tagged:
         sentences = [" ".join(sentence) for sentence in _keyword_list_extractor(sentences, is_noun)]
     # print('post-tagging: (%r), example : %s' % (is_post_tagged, sentences[0]))
     if is_w2v:
-        print("sentences after pos tagging", sentences)
+        # print("sentences after pos tagging", sentences)
         w2v_model = gensim.models.Word2Vec.load(datapath("/home/alice/yeongmin/dataset/ko.bin"))
         data = _vectorize_sentence_list(w2v_model=w2v_model, docs=sentences)
     end = time.time()
-    print("len(data)",len(data))
-    print("data",data)
-
-    print('Dataset has been built successfully.')
-    print('Run time: {}'.format(end - start))
-    print('Number of sentences: {}'.format(len(data)))
-    print('Vocabulary size: {}'.format(len(
-        vocab_processor.vocabulary.mapping) if not is_w2v else w2v_model.vocabulary.__sizeof__()))  # word 2vector에 맞춰 변경
-    print('Max document length: {}\n'.format(vocab_processor.max_document_length))  # 추가 변경 해줘야 될 부분
+    # print("len(data)",len(data))
+    # print("data",data)
+    #
+    # print('Dataset has been built successfully.')
+    # print('Run time: {}'.format(end - start))
+    # print('Number of sentences: {}'.format(len(data)))
+    # print('Vocabulary size: {}'.format(len(
+    #     vocab_processor.vocabulary.mapping) if not is_w2v else w2v_model.vocabulary.__sizeof__()))  # word 2vector에 맞춰 변경
+    # print('Max document length: {}\n'.format(vocab_processor.max_document_length))  # 추가 변경 해줘야 될 부분
 
     return data, lengths
 
