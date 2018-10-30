@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
 
-class cnn_clf(object):
+class cnn_clf_w2v(object):
     """
     A CNN classifier for text classification
     """
@@ -17,19 +17,14 @@ class cnn_clf(object):
         self.is_w2v = config.is_w2v
         
         # Placeholders
-        self.input_x = tf.placeholder(dtype=tf.int32, shape=[None, self.max_length], name='input_x')
+        self.input_x = tf.placeholder(dtype=tf.float32, shape=(None, self.max_length, self.embedding_size), name='input_x')
         self.input_y = tf.placeholder(dtype=tf.int64, shape=[None], name='input_y')
         self.keep_prob = tf.placeholder(dtype=tf.float32, name='keep_prob')
 
         # L2 loss
         self.l2_loss = tf.constant(0.0)
 
-        # # Word embedding
-        with tf.device('/cpu:0'), tf.name_scope('embedding'):
-            embedding = tf.Variable(tf.random_uniform([self.vocab_size, self.embedding_size], -1.0, 1.0),
-                                    name="embedding")
-            embed = tf.nn.embedding_lookup(embedding, self.input_x)
-            inputs = tf.expand_dims(embed, -1)
+        inputs = tf.expand_dims(self.input_x, -1)
 
         # Convolution & Maxpool
         pooled_outputs = []
@@ -73,7 +68,7 @@ class cnn_clf(object):
             self.l2_loss += tf.nn.l2_loss(softmax_b)
 
             self.logits = tf.matmul(h_drop, softmax_w) + softmax_b
-            predictions = tf.nn.softmax(self.logits)
+            predictions = tf.nn.softmax(self.logits, name='logits')
             self.predictions = tf.argmax(predictions, 1, name='predictions')
 
         # Loss

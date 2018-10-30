@@ -7,14 +7,17 @@ import tensorflow as tf
 from tensorflow.contrib import learn
 
 import data_helper
-
+## TODO 일중 프로님 오면 다시
+## 내일 할 것  (옌장 내일 일찍 오자 - 1시간이면 다 돌리지 않을까?)
+## 1) 일중 프로님꺼 붙이기 / Input Output 나오게 만들기
+## 2) 피피티 수치 다시 구하기  (피피티에 일중 프로님 수치 만들어서 넣기)
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 # Parameter setting
 data_path = './data/bot_dataset_all_new_test.csv'
-run_dir = './runs/1533865660_clstm_w2v'
-checkpoint = 'clf-2500'
+run_dir = './runs/rnn_illjoong'
+checkpoint = 'clf-4900'
 
 # File paths
 tf.flags.DEFINE_string('data_file', data_path, 'Test data file path')
@@ -25,58 +28,65 @@ tf.flags.DEFINE_string('checkpoint', checkpoint, 'Restore the graph from this ch
 tf.flags.DEFINE_integer('batch_size', 20, 'Test batch size')
 
 #w2v model parameters
-tf.flags.DEFINE_bool('is_w2v', True, 'Apply pre-trained word2vector mode')
-tf.flags.DEFINE_integer('max_length', 28, 'Max document length')
+tf.flags.DEFINE_bool('is_w2v', False, 'Apply pre-trained word2vector mode')
+tf.flags.DEFINE_integer('max_length', 20, 'Max document length')
 tf.flags.DEFINE_integer('embedding_size', 200, 'Word embedding size. For CNN, C-LSTM.')
 
 #post tagging parameters
-tf.flags.DEFINE_bool('is_post_tagged', True, 'Apply post_tagged words mode')
-tf.flags.DEFINE_bool('is_noun', True, 'Allow noun only for training words')
+tf.flags.DEFINE_bool('is_post_tagged', False, 'Apply post_tagged words mode')
+tf.flags.DEFINE_bool('is_noun', False, 'Allow noun only for training words')
 
 FLAGS = tf.app.flags.FLAGS
 
 # Restore parameters
-with open(os.path.join(FLAGS.run_dir, 'params.pkl'), 'rb') as f:
-    params = pkl.load(f, encoding='bytes')
+# with open(os.path.join(FLAGS.run_dir, 'params.pkl'), 'rb') as f:
+#     params = pkl.load(f, encoding='bytes')
 
 # Restore vocabulary processor
-vocab_processor = learn.preprocessing.VocabularyProcessor.restore(os.path.join(FLAGS.run_dir, 'vocab'))
+# vocab_processor = learn.preprocessing.VocabularyProcessor.restore(os.path.join(FLAGS.run_dir, 'vocab'))
 
 # Load test data
 data, labels, lengths, _ = data_helper.load_data(file_path=FLAGS.data_file,
-                                                 sw_path=params['stop_word_file'],
-                                                 min_frequency=params['min_frequency'],
-                                                 max_length=params['max_length'],
-                                                 language=params['language'],
-                                                 vocab_processor=vocab_processor,
+                                                 # sw_path=params['stop_word_file'],
+                                                 # min_frequency=params['min_frequency'],
+                                                 max_length=20,
+                                                 language='ko',
+                                                 # vocab_processor=vocab_processor,
                                                  shuffle=False, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged, is_noun = FLAGS.is_noun)
 labels = [label - 1 for label in labels]
+
+for idx, label in enumerate(labels): # 3->1 2->3 1->2
+    if label > 0:
+        labels[idx] = (label % 3)+1
+
 target = [idx for idx, label in enumerate(labels) if label > -1]
 data = [data[idx] for idx in target]
 labels = [labels[idx] for idx in target]
 lengths = [lengths[idx] for idx in target]
-print(set(labels))
+
 # Restore graph
 graph = tf.Graph()
 with graph.as_default():
     sess = tf.Session()
     # Restore metagraph
-    saver = tf.train.import_meta_graph('{}.meta'.format(os.path.join(FLAGS.run_dir, 'model', FLAGS.checkpoint)))
+    saver = tf.train.import_meta_graph('{}.meta'.format(os.path.join(FLAGS.run_dir, 'model', 'rnn')))
     # Restore weights
-    saver.restore(sess, os.path.join(FLAGS.run_dir, 'model', FLAGS.checkpoint))
+    saver.restore(sess, os.path.join(FLAGS.run_dir, 'model', 'rnn'))
     # print([node.name for node in tf.get_default_graph().as_graph_def().node])
     # Get tensors
-    input_x = graph.get_tensor_by_name('input_x:0')
-    input_y = graph.get_tensor_by_name('input_y:0')
-    keep_prob = graph.get_tensor_by_name('keep_prob:0')
-    predictions = graph.get_tensor_by_name('softmax/predictions:0')
-    accuracy = graph.get_tensor_by_name('accuracy/accuracy:0')
+    input_x = graph.get_tensor_by_name('Placeholder:0')
+    input_y = graph.get_tensor_by_name('Placeholder_2:0')
+    keep_prob = graph.get_tensor_by_name('PlaceholderWithDefault:0')
+    predictions = graph.get_tensor_by_name('ArgMax:0')
+    # accuracy = graph.get_tensor_by_name('avg_accuracy:0')
+    softmax = graph.get_tensor_by_name('Softmax:0')
 
     # Generate batches
     batches = data_helper.batch_iter(data, labels, lengths, FLAGS.batch_size, 1)
 
     num_batches = int(len(data)/FLAGS.batch_size)
     all_predictions = []
+    all_softmax = []
     sum_accuracy = 0
 
     # Test
@@ -93,24 +103,30 @@ with graph.as_default():
                     input_conv[idx] = item[:FLAGS.max_length]
             x_test = input_conv
 
-        if 'cnn' in params['clf']:
-            feed_dict = {input_x: x_test, input_y: y_test, keep_prob: 1.0}
-            batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
-        else:
-            batch_size = graph.get_tensor_by_name('batch_size:0')
-            sequence_length = graph.get_tensor_by_name('sequence_length:0')
-            feed_dict = {input_x: x_test, input_y: y_test, batch_size: FLAGS.batch_size, sequence_length: x_lengths, keep_prob: 1.0}
+        # if 'cnn' in params['clf']:
+        #     feed_dict = {input_x: x_test, input_y: y_test, keep_prob: 1.0}
+        #     batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
+        # else:
+        #     batch_size = graph.get_tensor_by_name('batch_size:0')
+            sequence_length = graph.get_tensor_by_name('Placeholder_1:0')
+            feed_dict = {input_x: x_test, input_y: y_test, sequence_length: x_lengths, keep_prob: 1.0}
 
-            batch_predictions, batch_accuracy = sess.run([predictions, accuracy], feed_dict)
-
+            batch_predictions, batch_softmax = sess.run([predictions, softmax], feed_dict)
+            # print(batch_softmax)
+            batch_accuracy = 0.0
+            for idx, label in enumerate(y_test):
+                if label == batch_predictions[idx]:
+                    batch_accuracy += 1
+            batch_accuracy = batch_accuracy / len(y_test)
         sum_accuracy += batch_accuracy
         all_predictions = np.concatenate([all_predictions, batch_predictions])
+        # all_softmax = np.concatenate([all_softmax, batch_softmax])
     # print(all_predictions)
     # print(y_test)
     final_accuracy = sum_accuracy / num_batches
 # Print test accuracy
 print('Test accuracy: {}'.format(final_accuracy))
-
+# print(all_softmax)
 # Save all predictions
 with open(os.path.join(FLAGS.run_dir, 'predictions.csv'), 'w', encoding='utf-8', newline='') as f:
     csvwriter = csv.writer(f)

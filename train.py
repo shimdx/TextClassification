@@ -5,6 +5,7 @@ import csv
 import time
 import json
 import datetime
+import numpy as np
 import pickle as pkl
 import tensorflow as tf
 from tensorflow.contrib import learn
@@ -13,8 +14,9 @@ import data_helper
 from rnn_classifier import rnn_clf
 from cnn_classifier import cnn_clf
 from clstm_classifier import clstm_clf
-
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+from cnn_classifier_w2v import cnn_clf_w2v
+from clstm_classifier_w2v import clstm_clf_w2v
+from rnn_classifier_w2v import rnn_clf_w2v
 
 try:
     from sklearn.model_selection import train_test_split
@@ -25,16 +27,17 @@ except ImportError as e:
 
 # Show warnings and errors only
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # Parameters
 # =============================================================================
 # Data_parameters setting
-data_path = './data/bot_dataset_train_1808031014.csv'
+data_path = './data/bot_dataset_all_new_train.csv'
 data_language = 'ko'
 num_classes = 4
 
 # Model choices
-tf.flags.DEFINE_string('clf', 'cnn', "Type of classifiers. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
+tf.flags.DEFINE_string('clf', 'cnn_w2v', "Type of classifierz s. Default: cnn. You have four choices: [cnn, lstm, blstm, clstm]")
 
 # Data parameters
 tf.flags.DEFINE_string('data_file', data_path, 'Data file path')
@@ -62,8 +65,14 @@ tf.flags.DEFINE_integer('num_epochs', 50, 'Number of epochs')
 tf.flags.DEFINE_float('decay_rate', 1, 'Learning rate decay rate. Range: (0, 1]')  # Learning rate decay
 tf.flags.DEFINE_integer('decay_steps', 100000, 'Learning rate decay steps')  # Learning rate decay
 tf.flags.DEFINE_integer('evaluate_every_steps', 100, 'Evaluate the model on validation set after this many steps')
-tf.flags.DEFINE_integer('save_every_steps', 1000, 'Save the model after this many steps')
+tf.flags.DEFINE_integer('save_every_steps', 500, 'Save the model after this many steps')
 tf.flags.DEFINE_integer('num_checkpoint', 10, 'Number of models to store')
+
+#w2v model parameters
+tf.flags.DEFINE_bool('is_w2v', True, 'Apply pre-trained word2vector mode')
+#post tagging parameters
+tf.flags.DEFINE_bool('is_post_tagged', True, 'Apply post_tagged words mode')
+tf.flags.DEFINE_bool('is_noun', False, 'Allow noun only for training words')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -79,6 +88,7 @@ if not os.path.exists(outdir):
     os.makedirs(outdir)
 
 # Load and save data
+
 # =============================================================================
 
 data, labels, lengths, vocab_processor = data_helper.load_data(file_path=FLAGS.data_file,
@@ -86,8 +96,7 @@ data, labels, lengths, vocab_processor = data_helper.load_data(file_path=FLAGS.d
                                                                min_frequency=FLAGS.min_frequency,
                                                                max_length=FLAGS.max_length,
                                                                language=FLAGS.language,
-                                                               shuffle=True)
-
+                                                               shuffle=True, is_w2v=FLAGS.is_w2v, is_post_tagged=FLAGS.is_post_tagged, is_noun = FLAGS.is_noun)
 # Save vocabulary processor
 vocab_processor.save(os.path.join(outdir, 'vocab'))
 
@@ -96,16 +105,32 @@ FLAGS.vocab_size = len(vocab_processor.vocabulary_._mapping)
 FLAGS.max_length = vocab_processor.max_document_length
 
 params = FLAGS.flag_values_dict()
+
+labels = [label - 1 for label in labels]
+target = [idx for idx, label in enumerate(labels) if label > -1]
+data = [data[idx] for idx in target]
+labels = [labels[idx] for idx in target]
+lengths = [lengths[idx] for idx in target]
+
+# pretrained w2v model 미 적용시, 연관 parameter 삭제 / embedding dim size는 pretrained의 크기 대로 (200)
+if not params['is_w2v']:
+    del params['is_w2v']
+else :
+    if ('lstm' or 'blstm') in params['clf']:
+        print('lstm with w2v')
+        FLAGS.hidden_size = 200
+    FLAGS.embedding_size = 200
+
 # Print parameters
 model = params['clf']
-if model == 'cnn':
+if 'cnn' in model :
     del params['hidden_size']
     del params['num_layers']
-elif model == 'lstm' or model == 'blstm':
+elif 'lstm' in model or 'blstm' in model:
     del params['num_filters']
     del params['filter_sizes']
     params['embedding_size'] = params['hidden_size']
-elif model == 'clstm':
+elif 'clstm' in model:
     params['hidden_size'] = len(list(map(int, params['filter_sizes'].split(",")))) * params['num_filters']
 
 params_dict = sorted(params.items(), key=lambda x: x[0])
@@ -140,6 +165,12 @@ with tf.Graph().as_default():
             classifier = rnn_clf(FLAGS)
         elif FLAGS.clf == 'clstm':
             classifier = clstm_clf(FLAGS)
+        elif FLAGS.clf == 'cnn_w2v':
+            classifier = cnn_clf_w2v(FLAGS)
+        elif FLAGS.clf == 'clstm_w2v':
+            classifier = clstm_clf_w2v(FLAGS)
+        elif FLAGS.clf == 'lstm_w2v' or FLAGS.clf == 'blstm_w2v':
+            classifier = rnn_clf_w2v(FLAGS)
         else:
             raise ValueError('clf should be one of [cnn, lstm, blstm, clstm]')
 
@@ -179,6 +210,17 @@ with tf.Graph().as_default():
             """Run one step of the training process."""
             input_x, input_y, sequence_length = input_data
 
+            # w2v 적용을 위한 array 정형화
+            if FLAGS.is_w2v:
+                input_conv = np.zeros((len(input_x), FLAGS.max_length, FLAGS.embedding_size), dtype=np.float32)
+                for idx, item in enumerate(input_x):
+                    if len(item) < FLAGS.max_length:
+                        for i, word in enumerate(item):
+                            input_conv[idx][i] = word
+                    else :
+                        input_conv[idx] = item[:FLAGS.max_length]
+                input_x = input_conv
+
             fetches = {'step': global_step,
                        'cost': classifier.cost,
                        'accuracy': classifier.accuracy,
@@ -186,7 +228,9 @@ with tf.Graph().as_default():
             feed_dict = {classifier.input_x: input_x,
                          classifier.input_y: input_y}
 
-            if FLAGS.clf != 'cnn':
+
+
+            if  'cnn' not in FLAGS.clf:
                 fetches['final_state'] = classifier.final_state
                 feed_dict[classifier.batch_size] = len(input_x)
                 feed_dict[classifier.sequence_length] = sequence_length
@@ -219,7 +263,7 @@ with tf.Graph().as_default():
 
         print('Start training ...')
 
-        for train_input in train_data:
+        for train_input in train_data: # 다른 점은 word의 idx로 들어가느냐, vector로 들어가느냐
             run_step(train_input, is_training=True)
             current_step = tf.train.global_step(sess, global_step)
 
@@ -232,3 +276,4 @@ with tf.Graph().as_default():
                 save_path = saver.save(sess, os.path.join(outdir, 'model/clf'), current_step)
 
         print('\nAll the files have been saved to {}\n'.format(outdir))
+
